@@ -16,7 +16,6 @@ jobs:
         python-version: '3.9'
     - name: package
       run: |
-        pip install -r requirements.txt
         pip install pyinstaller
         pyinstaller --onefile --noconsole --icon=app.ico main.py
     - name: Upload APK

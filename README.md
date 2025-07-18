@@ -4,7 +4,7 @@
 - 支持批量替换文本/超文本（.txt/.html/.htm）、Word（.doc/.docx）、Excel（.xls/.xlsx）、PowerPoint（.ppt/.pptx）等文件内容
 - 支持文件名同步替换
 - Word文档通配符、带格式、半角全角转换
-- PowerPoint多母版替换
+- PowerPoint替换
 - Excel批量替换
 - 智能编码识别、Unicode支持
 - 进度条与日志输出

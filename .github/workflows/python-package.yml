@@ -11,9 +11,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python 3.7
-      uses: actions/setup-python@v1
+      uses: Qwerty-133/python-setup@v1.0.1
       with:
         python-version: '3.7'
+        use-cache: false
     - name: package
       run: |
         pip install pyinstaller

@@ -1,4 +1,4 @@
-name: Build Windows EXE with Docker
+name: Build Windows EXE with Wine
 
 on: [push]
 
@@ -8,10 +8,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Build Windows EXE with Docker
+      - name: Set up Wine
         run: |
-          docker run --rm -v "$(pwd):/src/" cdrx/pyinstaller-windows:python3.7 \
-            pyinstaller --clean --onefile --noconsole --icon=app.ico main.py
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y wine wine32
+      
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.7'
+      
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+      
+      - name: Build Windows EXE
+        run: |
+          wine python -m pip install -r requirements.txt  # 安装依赖
+          wine pyinstaller --clean --onefile --noconsole --icon=app.ico main.py
       
       - name: Upload EXE
         uses: actions/upload-artifact@v4.6.2

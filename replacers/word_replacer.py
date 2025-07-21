@@ -11,39 +11,48 @@ import re
 import traceback
 
 def replace_in_docx_keep_format(file_path, replacements):
+    from docx.text.paragraph import Paragraph
+    from docx.table import _Cell, Table
+
     doc = Document(file_path)
-    # 正文
-    for para in doc.paragraphs:
-        for run in para.runs:
-            for old, new in replacements:
-                if old in run.text:
-                    run.text = run.text.replace(old, new)
-    # 页眉和页脚
-    for section in doc.sections:
-        # 页眉
-        header = section.header
-        for para in header.paragraphs:
-            for run in para.runs:
+    try:
+        # 正文
+        for para in getattr(doc, 'paragraphs', []):
+            for run in getattr(para, 'runs', []):
                 for old, new in replacements:
                     if old in run.text:
                         run.text = run.text.replace(old, new)
-        # 页脚
-        footer = section.footer
-        for para in footer.paragraphs:
-            for run in para.runs:
-                for old, new in replacements:
-                    if old in run.text:
-                        run.text = run.text.replace(old, new)
-    # 表格内容
-    for table in doc.tables:
-        for row in table.rows:
-            for cell in row.cells:
-                for para in cell.paragraphs:
-                    for run in para.runs:
+        # 页眉和页脚
+        for section in getattr(doc, 'sections', []):
+            # 页眉
+            header = getattr(section, 'header', None)
+            if header:
+                for para in getattr(header, 'paragraphs', []):
+                    for run in getattr(para, 'runs', []):
                         for old, new in replacements:
                             if old in run.text:
                                 run.text = run.text.replace(old, new)
-    doc.save(file_path)
+            # 页脚
+            footer = getattr(section, 'footer', None)
+            if footer:
+                for para in getattr(footer, 'paragraphs', []):
+                    for run in getattr(para, 'runs', []):
+                        for old, new in replacements:
+                            if old in run.text:
+                                run.text = run.text.replace(old, new)
+        # 表格内容
+        for table in getattr(doc, 'tables', []):
+            for row in getattr(table, 'rows', []):
+                for cell in getattr(row, 'cells', []):
+                    for para in getattr(cell, 'paragraphs', []):
+                        for run in getattr(para, 'runs', []):
+                            for old, new in replacements:
+                                if old in run.text:
+                                    run.text = run.text.replace(old, new)
+        doc.save(file_path)
+    except Exception as e:
+        print(f'处理docx内容时出错：{file_path}，原因：{e}')
+        raise
 
 def doc_to_docx(doc_path):
     pythoncom.CoInitialize()
@@ -55,17 +64,32 @@ def doc_to_docx(doc_path):
         doc = word.Documents.Open(os.path.normpath(os.path.abspath(doc_path)))
         if doc is None:
             print(f"处理失败：{doc_path}，原因：Word无法打开文档，可能路径、权限或文件损坏")
+            if os.path.exists(docx_path):
+                try:
+                    os.remove(docx_path)
+                except Exception:
+                    pass
             return docx_path
         try:
             doc.SaveAs(docx_path, FileFormat=16)  # 16=wdFormatDocumentDefault (.docx)
         except Exception as e:
             print(f"处理失败：{doc_path}，原因：SaveAs失败: {e}")
             doc.Close()
+            if os.path.exists(docx_path):
+                try:
+                    os.remove(docx_path)
+                except Exception:
+                    pass
             return docx_path
         doc.Close()
     except Exception as e:
         # 只在处理失败时输出
         print(f"处理失败：{doc_path}，原因：{e}")
+        if os.path.exists(docx_path):
+            try:
+                os.remove(docx_path)
+            except Exception:
+                pass
         raise
     finally:
         try:
@@ -87,17 +111,32 @@ def docx_to_doc(docx_path, doc_path):
         doc = word.Documents.Open(os.path.normpath(os.path.abspath(docx_path)))
         if doc is None:
             print(f"处理失败：{docx_path}，原因：Word无法打开文档，可能路径、权限或文件损坏")
+            if os.path.exists(docx_path):
+                try:
+                    os.remove(docx_path)
+                except Exception:
+                    pass
             return
         try:
             doc.SaveAs(doc_path, FileFormat=0)  # 0=wdFormatDocument (.doc)
         except Exception as e:
             print(f"处理失败：{docx_path}，原因：SaveAs失败: {e}")
             doc.Close()
+            if os.path.exists(docx_path):
+                try:
+                    os.remove(docx_path)
+                except Exception:
+                    pass
             return
         doc.Close()
     except Exception as e:
         # 只在处理失败时输出
         print(f"处理失败：{docx_path}，原因：{e}")
+        if os.path.exists(docx_path):
+            try:
+                os.remove(docx_path)
+            except Exception:
+                pass
         raise
     finally:
         try:

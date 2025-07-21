@@ -1,4 +1,4 @@
-name: Build Windows EXE with Wine
+name: Build Windows EXE Headlessly
 
 on: [push]
 
@@ -8,11 +8,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Wine
+      - name: Install Wine and dependencies
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
-          sudo apt-get install -y wine wine32
+          sudo apt-get install -y wine wine32 xvfb
       
       - name: Set up Python 3.7
         uses: actions/setup-python@v3
@@ -22,10 +22,20 @@ jobs:
       - name: Install PyInstaller
         run: pip install pyinstaller
       
-      - name: Build Windows EXE
+      - name: Create virtual X server
+        run: Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+        shell: bash
+      
+      - name: Build Windows EXE with virtual display
+        env:
+          DISPLAY: :99.0
         run: |
-          wine python -m pip install -r requirements.txt  # 安装依赖
-          wine pyinstaller --clean --onefile --noconsole --icon=app.ico main.py
+          # 安装 Windows Python
+          wine python -m pip install --upgrade pip
+          wine python -m pip install -r requirements.txt
+          
+          # 使用 xvfb-run 包装 PyInstaller 命令
+          xvfb-run --auto-servernum wine pyinstaller --clean --onefile --noconsole --icon=app.ico main.py
       
       - name: Upload EXE
         uses: actions/upload-artifact@v4.6.2

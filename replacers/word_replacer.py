@@ -14,41 +14,42 @@ def replace_in_docx_keep_format(file_path, replacements):
     from docx.text.paragraph import Paragraph
     from docx.table import _Cell, Table
 
+    def safe_replace_in_paragraphs(paragraphs, replacements, context=""):
+        for para in paragraphs:
+            try:
+                for run in getattr(para, 'runs', []):
+                    for old, new in replacements:
+                        if old in run.text:
+                            run.text = run.text.replace(old, new)
+            except Exception as e:
+                print(f"处理段落时出错（{context}）：{e}")
+
+    def safe_replace_in_table(table, replacements, context=""):
+        for row_idx, row in enumerate(getattr(table, 'rows', [])):
+            for cell_idx, cell in enumerate(getattr(row, 'cells', [])):
+                try:
+                    safe_replace_in_paragraphs(getattr(cell, 'paragraphs', []), replacements, f"表格{context} 行{row_idx} 列{cell_idx}")
+                    # 递归处理嵌套表格
+                    for nested_table_idx, nested_table in enumerate(getattr(cell, 'tables', [])):
+                        safe_replace_in_table(nested_table, replacements, f"{context}-嵌套{nested_table_idx}")
+                except Exception as e:
+                    print(f"处理表格单元格时出错（{context} 行{row_idx} 列{cell_idx}）：{e}")
+
     doc = Document(file_path)
     try:
         # 正文
-        for para in getattr(doc, 'paragraphs', []):
-            for run in getattr(para, 'runs', []):
-                for old, new in replacements:
-                    if old in run.text:
-                        run.text = run.text.replace(old, new)
+        safe_replace_in_paragraphs(getattr(doc, 'paragraphs', []), replacements, "正文")
         # 页眉和页脚
-        for section in getattr(doc, 'sections', []):
-            # 页眉
+        for section_idx, section in enumerate(getattr(doc, 'sections', [])):
             header = getattr(section, 'header', None)
             if header:
-                for para in getattr(header, 'paragraphs', []):
-                    for run in getattr(para, 'runs', []):
-                        for old, new in replacements:
-                            if old in run.text:
-                                run.text = run.text.replace(old, new)
-            # 页脚
+                safe_replace_in_paragraphs(getattr(header, 'paragraphs', []), replacements, f"页眉{section_idx}")
             footer = getattr(section, 'footer', None)
             if footer:
-                for para in getattr(footer, 'paragraphs', []):
-                    for run in getattr(para, 'runs', []):
-                        for old, new in replacements:
-                            if old in run.text:
-                                run.text = run.text.replace(old, new)
+                safe_replace_in_paragraphs(getattr(footer, 'paragraphs', []), replacements, f"页脚{section_idx}")
         # 表格内容
-        for table in getattr(doc, 'tables', []):
-            for row in getattr(table, 'rows', []):
-                for cell in getattr(row, 'cells', []):
-                    for para in getattr(cell, 'paragraphs', []):
-                        for run in getattr(para, 'runs', []):
-                            for old, new in replacements:
-                                if old in run.text:
-                                    run.text = run.text.replace(old, new)
+        for table_idx, table in enumerate(getattr(doc, 'tables', [])):
+            safe_replace_in_table(table, replacements, f"主表格{table_idx}")
         doc.save(file_path)
     except Exception as e:
         print(f'处理docx内容时出错：{file_path}，原因：{e}')
@@ -153,8 +154,19 @@ def replace_in_word_doc(file_path, replacements, wildcard=False, keep_format=Tru
     try:
         if keep_format:
             docx_path = doc_to_docx(file_path)
-            replace_in_docx_keep_format(docx_path, replacements)
-            docx_to_doc(docx_path, file_path)
+            try:
+                replace_in_docx_keep_format(docx_path, replacements)
+                docx_to_doc(docx_path, file_path)
+            except Exception as e:
+                print(f"处理失败：{file_path}，原因：{e}")
+                print(traceback.format_exc())
+                # 只要出错就尝试删除 docx_path
+                if os.path.exists(docx_path):
+                    try:
+                        os.remove(docx_path)
+                    except Exception:
+                        pass
+                raise
             if os.path.exists(docx_path):
                 os.remove(docx_path)
         else:
@@ -197,13 +209,28 @@ def replace_in_word_doc(file_path, replacements, wildcard=False, keep_format=Tru
         print(f"处理失败：{file_path}，原因：{e}")
         try:
             docx_path = doc_to_docx(file_path)
-            replace_in_docx_keep_format(docx_path, replacements)
-            docx_to_doc(docx_path, file_path)
+            try:
+                replace_in_docx_keep_format(docx_path, replacements)
+                docx_to_doc(docx_path, file_path)
+            except Exception as e2:
+                print(f"处理失败：{file_path}，原因：{e2}")
+                print(traceback.format_exc())
+                if os.path.exists(docx_path):
+                    try:
+                        os.remove(docx_path)
+                    except Exception:
+                        pass
+                raise
             if os.path.exists(docx_path):
                 os.remove(docx_path)
         except Exception as e2:
             print(f"处理失败：{file_path}，原因：{e2}")
             print(traceback.format_exc())
+            if 'docx_path' in locals() and os.path.exists(docx_path):
+                try:
+                    os.remove(docx_path)
+                except Exception:
+                    pass
             raise
 
 def replace_in_word(file_path, replacements, wildcard=False, fullwidth=False, halfwidth=False, keep_format=True):

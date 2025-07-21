@@ -1,20 +1,26 @@
-name: Build Windows EXE with Docker
+name: Build Windows EXE on Windows
 
 on: [push]
 
 jobs:
   build-windows:
-    runs-on: ubuntu-22.04
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       
-      - name: Build with Windows Python image
-        run: |
-          docker run --rm -v "$(pwd):/src" cdrx/pyinstaller-windows:python3 \
-            powershell -Command "python -m pip install pyinstaller; pyinstaller --clean --onefile --noconsole --icon=app.ico main.py"
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.7'
+      
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+      
+      - name: Build Windows EXE
+        run: pyinstaller --clean --onefile --noconsole --icon=app.ico main.py
       
       - name: Upload EXE
         uses: actions/upload-artifact@v4.6.2
         with:
           name: main-windows
-          path: ./dist/*.exe
+          path: .\dist\*.exe

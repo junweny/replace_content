@@ -56,11 +56,7 @@ class ReplaceThread(QThread):
                     replace_in_ppt(file, self.replacements)
                 elif ext == '.ppt':
                     replace_in_ppt_ppt(file, self.replacements)
-                if self.options['filename']:
-                    new_file = replace_filename(file, self.replacements)
-                    if new_file != file:
-                        self.log_signal.emit(f"文件名已改为：{os.path.basename(new_file)}")
-                self.log_signal.emit(f"处理完成：{file}")
+                # self.log_signal.emit(f"处理完成：{file}")
             except Exception as e:
                 self.log_signal.emit(f"处理失败：{file}，原因：{e}")
             self.progress_signal.emit(idx)
@@ -90,10 +86,13 @@ class MainWindow(QMainWindow):
         file_group = QGroupBox("文件/文件夹选择")
         file_layout = QHBoxLayout()
         self.file_path = QLineEdit()
-        self.file_btn = QPushButton("选择")
+        self.file_btn = QPushButton("选择文件")
+        self.folder_btn = QPushButton("选择文件夹")
         self.file_btn.clicked.connect(self.select_files)
+        self.folder_btn.clicked.connect(self.select_folder)
         file_layout.addWidget(self.file_path)
         file_layout.addWidget(self.file_btn)
+        file_layout.addWidget(self.folder_btn)
         file_group.setLayout(file_layout)
 
         # 替换规则区
@@ -160,34 +159,19 @@ class MainWindow(QMainWindow):
         self.stop_btn.clicked.connect(self.stop_replace)
 
     def select_files(self):
-        dlg = QFileDialog(self)
-        dlg.setFileMode(QFileDialog.ExistingFiles)
-        dlg.setOption(QFileDialog.DontUseNativeDialog, True)
-        dlg.setWindowTitle("选择文件或文件夹")
-        dlg.setNameFilter("所有文件 (*.*)")
-        # 增加文件夹选择按钮
-        btns = dlg.findChildren(QPushButton)
-        folder_btn = None
-        for btn in btns:
-            if btn.text() in ("&Open", "打开(&O)", "Open"):
-                folder_btn = QPushButton("选择文件夹", dlg)
-                btn.parent().layout().addWidget(folder_btn)
-                break
-        def choose_folder():
-            folder = QFileDialog.getExistingDirectory(self, "选择文件夹", "")
-            if folder:
-                self.file_path.setText(folder)
-                self.files = []
-                for ext in ('*.txt', '*.html', '*.htm', '*.docx', '*.doc', '*.xlsx', '*.xls', '*.pptx', '*.ppt'):
-                    self.files.extend(glob.glob(os.path.join(folder, '**', ext), recursive=True))
-                self.log(f"已选文件数：{len(self.files)}")
-            dlg.reject()
-        if folder_btn:
-            folder_btn.clicked.connect(choose_folder)
-        if dlg.exec_():
-            files = dlg.selectedFiles()
+        files, _ = QFileDialog.getOpenFileNames(self, "选择文件", "", "所有文件 (*.*)")
+        if files:
             self.file_path.setText(';'.join(files))
             self.files = list(files)
+            self.log(f"已选文件数：{len(self.files)}")
+
+    def select_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "选择文件夹", "")
+        if folder:
+            self.file_path.setText(folder)
+            self.files = []
+            for ext in ('*.txt', '*.html', '*.htm', '*.docx', '*.doc', '*.xlsx', '*.xls', '*.pptx', '*.ppt'):
+                self.files.extend(glob.glob(os.path.join(folder, '**', ext), recursive=True))
             self.log(f"已选文件数：{len(self.files)}")
 
     def parse_rules(self):

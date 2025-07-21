@@ -53,20 +53,29 @@ def doc_to_docx(doc_path):
     docx_path = doc_path + 'x' if not doc_path.lower().endswith('.docx') else doc_path
     try:
         doc = word.Documents.Open(os.path.normpath(os.path.abspath(doc_path)))
-        doc.SaveAs(docx_path, FileFormat=16)  # 16=wdFormatDocumentDefault (.docx)
+        if doc is None:
+            print(f"处理失败：{doc_path}，原因：Word无法打开文档，可能路径、权限或文件损坏")
+            return docx_path
+        try:
+            doc.SaveAs(docx_path, FileFormat=16)  # 16=wdFormatDocumentDefault (.docx)
+        except Exception as e:
+            print(f"处理失败：{doc_path}，原因：SaveAs失败: {e}")
+            doc.Close()
+            return docx_path
         doc.Close()
     except Exception as e:
-        print(f"[DEBUG] doc转docx失败: {doc_path}, {e}")
+        # 只在处理失败时输出
+        print(f"处理失败：{doc_path}，原因：{e}")
         raise
     finally:
         try:
             word.Quit()
-        except Exception as quit_e:
-            print(f"[DEBUG] 释放Word进程失败: {quit_e}")
+        except Exception:
+            pass
         try:
             pythoncom.CoUninitialize()
-        except Exception as uninit_e:
-            print(f"[DEBUG] 释放COM失败: {uninit_e}")
+        except Exception:
+            pass
     return docx_path
 
 def docx_to_doc(docx_path, doc_path):
@@ -76,20 +85,29 @@ def docx_to_doc(docx_path, doc_path):
     word.DisplayAlerts = 0
     try:
         doc = word.Documents.Open(os.path.normpath(os.path.abspath(docx_path)))
-        doc.SaveAs(doc_path, FileFormat=0)  # 0=wdFormatDocument (.doc)
+        if doc is None:
+            print(f"处理失败：{docx_path}，原因：Word无法打开文档，可能路径、权限或文件损坏")
+            return
+        try:
+            doc.SaveAs(doc_path, FileFormat=0)  # 0=wdFormatDocument (.doc)
+        except Exception as e:
+            print(f"处理失败：{docx_path}，原因：SaveAs失败: {e}")
+            doc.Close()
+            return
         doc.Close()
     except Exception as e:
-        print(f"[DEBUG] docx转doc失败: {docx_path}, {e}")
+        # 只在处理失败时输出
+        print(f"处理失败：{docx_path}，原因：{e}")
         raise
     finally:
         try:
             word.Quit()
-        except Exception as quit_e:
-            print(f"[DEBUG] 释放Word进程失败: {quit_e}")
+        except Exception:
+            pass
         try:
             pythoncom.CoUninitialize()
-        except Exception as uninit_e:
-            print(f"[DEBUG] 释放COM失败: {uninit_e}")
+        except Exception:
+            pass
 
 
 def replace_in_word_doc(file_path, replacements, wildcard=False, keep_format=True):
@@ -130,14 +148,14 @@ def replace_in_word_doc(file_path, replacements, wildcard=False, keep_format=Tru
             finally:
                 try:
                     word.Quit()
-                except Exception as quit_e:
-                    print(f"[DEBUG] 释放Word进程失败: {quit_e}")
+                except Exception:
+                    pass
                 try:
                     pythoncom.CoUninitialize()
-                except Exception as uninit_e:
-                    print(f"[DEBUG] 释放COM失败: {uninit_e}")
+                except Exception:
+                    pass
     except Exception as e:
-        print(f"[DEBUG] doc直接处理失败，尝试转docx再处理: {file_path}, {e}")
+        print(f"处理失败：{file_path}，原因：{e}")
         try:
             docx_path = doc_to_docx(file_path)
             replace_in_docx_keep_format(docx_path, replacements)

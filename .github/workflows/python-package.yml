@@ -17,9 +17,9 @@ jobs:
     - name: package
       run: |
         pip install pyinstaller
-        pyinstaller --clean --onefile --noconsole --icon=app.ico main.py
+        pyinstaller --clean --onefile --noconsole main.py
     - name: Upload EXE
       uses: actions/upload-artifact@v4.6.2
       with:
         name: main
-        path: ./**/*.exe
+        path: ./dist/main

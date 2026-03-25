@@ -1,44 +1,29 @@
-name: Node.js CI and Artifact
+name: Build Windows EXE on Windows
 
-on:
-  push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+on: [push]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # 使用当前稳定的LTS版本，例如 20.x
-        node-version: [ '10.x' ]
-
+  build-windows:
+    runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v4
-
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-
-    - name: Install Dependencies
-      # 先检查是否存在锁定文件，再决定使用 ci 还是 install
-      run: |
-        if [ -f "package-lock.json" ] || [ -f "npm-shrinkwrap.json" ] || [ -f "yarn.lock" ]; then
-          npm ci
-        else
-          npm install
-        fi
-
-    - name: Build Project
-      run: npm run build
-
-    - name: Archive Build Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-output-${{ github.run_id }}
-        # 请将路径替换为您项目的实际构建输出目录
-        path: ./dist/
-        retention-days: 5
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.7'
+          
+      - name: Install Requirements
+        run: pip install -r requirements.txt
+      
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+      
+      - name: Build Windows EXE
+        run: pyinstaller --onefile --noconsole --icon=app.ico main.py
+      
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: main-windows
+          path: .\dist\*.exe
